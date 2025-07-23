@@ -26,7 +26,7 @@ from google import genai
 from google.genai import types
 
 # Replace with your own API key if needed
-client = genai.Client(api_key="AIzaSyCjMsYC-mDTwOr1at1-91EkMwI2O6eOvXg")
+client = genai.Client(api_key="YOUR_API_KEY")
 
 response = client.models.generate_content(
     model="gemini-2.5-flash",
@@ -54,7 +54,7 @@ print(response.text)
 from PIL import Image
 from google import genai
 
-client = genai.Client(api_key="AIzaSyCjMsYC-mDTwOr1at1-91EkMwI2O6eOvXg")
+client = genai.Client(api_key="YOUR_API_KEY")
 
 image = Image.open("1.png")
 response = client.models.generate_content(
@@ -81,7 +81,7 @@ from google import genai
 from google.genai import types
 import pathlib
 
-client = genai.Client(api_key="AIzaSyCjMsYC-mDTwOr1at1-91EkMwI2O6eOvXg")
+client = genai.Client(api_key="YOUR_API_KEY")
 
 filepath = pathlib.Path('/content/RC car 1.pdf')
 
