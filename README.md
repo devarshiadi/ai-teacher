@@ -7,7 +7,7 @@ Welcome students! This guide will walk you through how to set up and use **Googl
 - 📄 PDF document analysis
 
 ---
-
+# AIzaSyCjMsYC-mDTwOr1at1-91EkMwI2O6eOvXg
 ## ✅ Step 1: Open Google Colab
 
 1. Go to [Google Colab](https://colab.research.google.com/)
