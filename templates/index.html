@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Teacher Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="chat-window">
+        <!-- Home Screen (Initial View) -->
+        <div class="home-screen" id="home-screen">
+            <h1>AI Teacher Assistant</h1>
+            <p>Your intelligent partner for learning, analysis, and discovery.</p>
+            <div class="suggestion-cards">
+                <div class="suggestion-card" data-prompt="Explain quantum computing in simple terms">
+                    <span class="material-icons-outlined">lightbulb</span>
+                    <h3>Explain a concept</h3>
+                </div>
+                <div class="suggestion-card" data-prompt="Analyze this image for key elements and themes">
+                    <span class="material-icons-outlined">image_search</span>
+                    <h3>Analyze an image</h3>
+                </div>
+                <div class="suggestion-card" data-prompt="Summarize this document into three key bullet points">
+                    <span class="material-icons-outlined">description</span>
+                    <h3>Summarize a doc</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Container (Hidden by default) -->
+        <div class="chat-container hidden" id="chat-container">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <form id="chat-form">
+                <!-- Attachment preview will go here -->
+                <div id="attachment-preview-container"></div>
+                
+                <div class="input-controls">
+                    <div></div> <!-- Spacer -->
+                    <div class="search-toggle-container">
+                        <span class="material-icons-outlined">travel_explore</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="web-search-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-bar">
+                    <input type="file" id="image-upload" hidden accept="image/*">
+                    <input type="file" id="pdf-upload" hidden accept="application/pdf">
+                    
+                    <label for="image-upload" id="image-upload-btn" class="icon-btn">
+                        <span class="material-icons-outlined">add_photo_alternate</span>
+                    </label>
+                    <label for="pdf-upload" id="pdf-upload-btn" class="icon-btn">
+                        <span class="material-icons-outlined">attach_file</span>
+                    </label>
+                    
+                    <textarea id="prompt-input" placeholder="Ask anything, or attach a file..." rows="1" required></textarea>
+                    
+                    <button type="submit" id="send-btn" class="icon-btn">
+                        <span class="material-icons-outlined">send</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // --- DOM ELEMENT REFERENCES ---
+    const homeScreen = document.getElementById('home-screen');
+    const chatContainer = document.getElementById('chat-container');
+    const chatForm = document.getElementById('chat-form');
+    const promptInput = document.getElementById('prompt-input');
+    const webSearchToggle = document.getElementById('web-search-toggle');
+    const imageUpload = document.getElementById('image-upload');
+    const pdfUpload = document.getElementById('pdf-upload');
+    const imageUploadBtn = document.getElementById('image-upload-btn');
+    const pdfUploadBtn = document.getElementById('pdf-upload-btn');
+    const attachmentPreviewContainer = document.getElementById('attachment-preview-container');
+    const suggestionCards = document.querySelectorAll('.suggestion-card');
+    // --- STATE MANAGEMENT ---
+    let currentAttachment = null; // { file: File, type: 'image' | 'pdf' }
+    // --- UI LOGIC & EVENT LISTENERS ---
+    // Transition from home screen to chat view
+    function startChat() {
+        if (!homeScreen.classList.contains('hidden')) {
+            homeScreen.classList.add('hidden');
+            chatContainer.classList.remove('hidden');
+        }
+    }
+    // Handle suggestion card clicks
+    suggestionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const promptText = card.dataset.prompt;
+            promptInput.value = promptText;
+            promptInput.focus();
+            startChat();
+        });
+    });
+    // Main UI state controller
+    function updateUiState() {
+        const isSearchOn = webSearchToggle.checked;
+        const isFileAttached = !!currentAttachment;
+        // Disable file buttons if search is on
+        imageUploadBtn.disabled = isSearchOn;
+        pdfUploadBtn.disabled = isSearchOn;
+        // Disable search toggle if a file is attached
+        webSearchToggle.disabled = isFileAttached;
+    }
+    // Event Listeners for controls
+    webSearchToggle.addEventListener('change', updateUiState);
+    imageUpload.addEventListener('change', (e) => handleFileUpload(e, 'image'));
+    pdfUpload.addEventListener('change', (e) => handleFileUpload(e, 'pdf'));
+    promptInput.addEventListener('input', () => {
+        promptInput.style.height = 'auto';
+        promptInput.style.height = `${promptInput.scrollHeight}px`;
+    });
+    promptInput.addEventListener('focus', startChat);
+    // --- FILE HANDLING ---
+    function handleFileUpload(event, type) {
+        const file = event.target.files[0];
+        if (!file) return;
+        currentAttachment = { file, type };
+        renderAttachmentPreview();
+        updateUiState();
+        startChat();
+    }
+    function renderAttachmentPreview() {
+        if (!currentAttachment) {
+            attachmentPreviewContainer.innerHTML = '';
+            return;
+        }
+        const { file, type } = currentAttachment;
+        const icon = type === 'image' ? 'image' : 'description';
+        
+        attachmentPreviewContainer.innerHTML = `
+            <div id="attachment-preview">
+                <span class="material-icons-outlined">${icon}</span>
+                <span class="filename">${file.name.substring(0, 20)}...</span>
+                <span id="remove-attachment-btn" class="material-icons-outlined">close</span>
+            </div>
+        `;
+        document.getElementById('remove-attachment-btn').addEventListener('click', removeAttachment);
+    }
+    function removeAttachment() {
+        currentAttachment = null;
+        imageUpload.value = '';
+        pdfUpload.value = '';
+        renderAttachmentPreview();
+        updateUiState();
+    }
+    // --- CHAT MESSAGE RENDERING ---
+    function addMessage(content, type, isError = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-message', `${type}-message`);
+        if (isError) {
+            messageDiv.classList.add('error');
+        }
+        // Sanitize and render markdown
+        messageDiv.innerHTML = type === 'bot' ? marked.parse(content) : content;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return messageDiv;
+    }
+    // --- FORM SUBMISSION (API INTEGRATION) ---
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const prompt = promptInput.value.trim();
+        if (!prompt && !currentAttachment) return;
+        
+        startChat();
+        
+        // 1. Add user message to UI
+        addMessage(prompt, 'user');
+        
+        const isSearchOn = webSearchToggle.checked;
+        const formData = new FormData();
+        let apiUrl = '';
+        // 2. Determine correct API endpoint and form data
+        if (isSearchOn) {
+            apiUrl = '/grounded_search';
+            formData.append('query', prompt);
+        } else if (currentAttachment) {
+            if (currentAttachment.type === 'image') {
+                apiUrl = '/analyze_image';
+            } else { // pdf
+                apiUrl = '/summarize_pdf';
+            }
+            formData.append('file', currentAttachment.file);
+            formData.append('prompt', prompt);
+        } else {
+            apiUrl = '/generate_text';
+            formData.append('system_instruction', "You are a helpful AI Teacher Assistant.");
+            formData.append('content', prompt);
+        }
+        // 3. Reset UI and show thinking indicator
+        const botMessageElement = addMessage('', 'bot');
+        botMessageElement.classList.add('thinking');
+        promptInput.value = '';
+        removeAttachment();
+        // 4. Make API call
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                body: formData,
+            });
+            botMessageElement.classList.remove('thinking');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'An unknown error occurred.');
+            }
+            const data = await response.json();
+            botMessageElement.innerHTML = marked.parse(data.text);
+        } catch (error) {
+            console.error('API Error:', error);
+            botMessageElement.classList.add('error');
+            botMessageElement.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        }
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+    // --- INITIALIZE ---
+    updateUiState();
+    </script>
+</body>
+</html>
